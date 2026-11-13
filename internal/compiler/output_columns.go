@@ -494,6 +494,10 @@ func (r *tableVisitor) Visit(n ast.Node) astutils.Visitor {
 	case *ast.RangeSubselect:
 		r.list.Items = append(r.list.Items, n)
 		return nil
+	case *ast.SubLink:
+		// A subquery in a join condition or a function argument is a query
+		// level of its own. Its tables are not tables of this FROM clause.
+		return nil
 	default:
 		return r
 	}
