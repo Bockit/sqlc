@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/sqlc-dev/sqlc/internal/sql/ast"
 	"github.com/sqlc-dev/sqlc/internal/sql/astutils"
@@ -27,6 +28,11 @@ type QueryCatalog struct {
 	// scopes holds the scope of every nested statement seen so far, keyed by
 	// the statement. Every catalog built for one query shares it.
 	scopes map[ast.Node]*QueryCatalog
+	// bodies holds, for every CTE seen so far, the catalog its body is read
+	// with: the catalog of the statement its WITH clause belongs to, limited
+	// to the CTEs that come before it, and itself when the clause is
+	// RECURSIVE. Every catalog built for one query shares it.
+	bodies map[*ast.CommonTableExpr]*QueryCatalog
 }
 
 func withClause(node ast.Node) *ast.WithClause {
@@ -50,6 +56,7 @@ func (comp *Compiler) buildQueryCatalog(c *catalog.Catalog, node ast.Node, embed
 		embeds:  embeds,
 		stmt:    node,
 		scopes:  map[ast.Node]*QueryCatalog{},
+		bodies:  map[*ast.CommonTableExpr]*QueryCatalog{},
 	}
 	if err := comp.addCTEs(qc, withClause(node)); err != nil {
 		return nil, err
@@ -65,7 +72,18 @@ func (comp *Compiler) addCTEs(qc *QueryCatalog, with *ast.WithClause) error {
 	}
 	for _, item := range with.Ctes.Items {
 		if cte, ok := item.(*ast.CommonTableExpr); ok {
-			cols, err := comp.outputColumns(qc, cte.Ctequery)
+			// The body sees the CTEs registered so far and none of the later
+			// ones, now and when the statement is walked again afterwards.
+			body := &QueryCatalog{
+				catalog: qc.catalog,
+				ctes:    maps.Clone(qc.ctes),
+				embeds:  qc.embeds,
+				parent:  qc.parent,
+				stmt:    qc.stmt,
+				scopes:  qc.scopes,
+				bodies:  qc.bodies,
+			}
+			cols, err := comp.outputColumns(body, cte.Ctequery)
 			if err != nil {
 				return err
 			}
@@ -86,9 +104,16 @@ func (comp *Compiler) addCTEs(qc *QueryCatalog, with *ast.WithClause) error {
 					cols[i].Name = names[i]
 				}
 			}
-			qc.ctes[*cte.Ctename] = &Table{
+			table := &Table{
 				Rel:     rel,
 				Columns: cols,
+			}
+			qc.ctes[*cte.Ctename] = table
+			if with.Recursive {
+				body.ctes[*cte.Ctename] = table
+			}
+			if qc.bodies != nil {
+				qc.bodies[cte] = body
 			}
 		}
 	}
@@ -125,6 +150,7 @@ func (comp *Compiler) scopeFor(qc *QueryCatalog, node ast.Node) (*QueryCatalog, 
 		parent:  qc,
 		stmt:    node,
 		scopes:  qc.scopes,
+		bodies:  qc.bodies,
 	}
 	if err := comp.addCTEs(scope, with); err != nil {
 		return nil, err
@@ -153,6 +179,12 @@ func (w *scopeWalker) Visit(node ast.Node) astutils.Visitor {
 	if err != nil {
 		*w.err = err
 		return nil
+	}
+	if cte, ok := node.(*ast.CommonTableExpr); ok && qc != nil {
+		// Inside a CTE, only the CTEs before it are visible.
+		if body, ok := qc.bodies[cte]; ok {
+			qc = body
+		}
 	}
 	if err := w.visit(qc, node); err != nil {
 		*w.err = err
