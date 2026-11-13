@@ -294,6 +294,7 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 							IsArray:      c.IsArray,
 							ArrayDims:    c.ArrayDims,
 							Length:       c.Length,
+							from:         t.from,
 						})
 					}
 				}
@@ -345,6 +346,9 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 				if res.Name != nil {
 					first.Name = *res.Name
 				}
+				// The FROM item the column was read from belongs to the
+				// subquery, not to this statement.
+				first.from = nil
 				cols = append(cols, first)
 			default:
 				cols = append(cols, &Column{Name: name, DataType: "any", NotNull: false})
@@ -381,6 +385,7 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 			if res.Name != nil {
 				first.Name = *res.Name
 			}
+			first.from = nil
 			cols = append(cols, first)
 
 		default:
@@ -395,7 +400,10 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 
 	if n, ok := node.(*ast.SelectStmt); ok {
 		for _, col := range cols {
-			if !col.NotNull || col.Table == nil || col.skipTableRequiredCheck {
+			if !col.NotNull || col.skipTableRequiredCheck {
+				continue
+			}
+			if col.Table == nil && col.from == nil {
 				continue
 			}
 			for _, f := range n.FromClause.Items {
@@ -419,7 +427,17 @@ const (
 
 func isTableRequired(n ast.Node, col *Column, prior int) int {
 	switch n := n.(type) {
+	case *ast.RangeSubselect, *ast.RangeFunction:
+		// A column read from a subquery or a function call in FROM is
+		// nullable when that item is on the nullable side of an outer join,
+		// whatever the item itself says about the column.
+		if col.from != nil && col.from == n {
+			return prior
+		}
 	case *ast.RangeVar:
+		if col.from != nil || col.Table == nil {
+			return tableNotFound
+		}
 		tableMatch := *n.Relname == col.Table.Name
 		aliasMatch := true
 		if n.Alias != nil && col.TableAlias != "" {
@@ -600,6 +618,7 @@ func (c *Compiler) sourceTables(qc *QueryCatalog, node ast.Node) ([]*Table, erro
 					Name: *n.Alias.Aliasname,
 				}
 			}
+			table.from = n
 			tables = append(tables, table)
 
 		case *ast.RangeSubselect:
@@ -618,6 +637,7 @@ func (c *Compiler) sourceTables(qc *QueryCatalog, node ast.Node) ([]*Table, erro
 					Name: tableName,
 				},
 				Columns: cols,
+				from:    n,
 			})
 
 		case *ast.RangeVar:
@@ -697,6 +717,7 @@ func outputColumnRefs(res *ast.ResTarget, tables []*Table, node *ast.ColumnRef) 
 					Length:       c.Length,
 					EmbedTable:   c.EmbedTable,
 					OriginalName: c.Name,
+					from:         t.from,
 				})
 			}
 		}

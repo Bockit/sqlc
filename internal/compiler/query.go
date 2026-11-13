@@ -15,6 +15,10 @@ type Function struct {
 type Table struct {
 	Rel     *ast.TableName
 	Columns []*Column
+
+	// from is the FROM item this table stands for when that item is a
+	// subquery or a function call. It is nil for a named relation.
+	from ast.Node
 }
 
 type Column struct {
@@ -40,6 +44,11 @@ type Column struct {
 	IsSqlcSlice bool // is this sqlc.slice()
 
 	skipTableRequiredCheck bool
+
+	// from is the subquery or function call in FROM that this column was read
+	// from, if any. A column read from one has no table name to look for in
+	// the join tree, so outer-join nullability matches it by this instead.
+	from ast.Node
 }
 
 type Query struct {
