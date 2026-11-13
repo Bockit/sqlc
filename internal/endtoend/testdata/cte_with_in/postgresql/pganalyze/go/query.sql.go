@@ -113,8 +113,8 @@ select id from T where L_ID in(
 )
 `
 
-func (q *Queries) GetAll3(ctx context.Context, dollar_1 pgtype.Int4) ([]int64, error) {
-	rows, err := q.db.Query(ctx, getAll3, dollar_1)
+func (q *Queries) GetAll3(ctx context.Context, lID pgtype.Int4) ([]int64, error) {
+	rows, err := q.db.Query(ctx, getAll3, lID)
 	if err != nil {
 		return nil, err
 	}

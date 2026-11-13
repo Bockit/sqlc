@@ -10,7 +10,7 @@ import (
 )
 
 const getLatestVersionWithSubquery = `-- name: GetLatestVersionWithSubquery :one
-SELECT * 
+SELECT id, name, previous_version_id 
 FROM versions
 WHERE versions.id IN (
   WITH RECURSIVE search_tree(id) AS (

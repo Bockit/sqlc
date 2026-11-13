@@ -21,7 +21,7 @@ func dataType(n *ast.TypeName) string {
 	}
 }
 
-func (comp *Compiler) resolveCatalogRefs(qc *QueryCatalog, rvs []*ast.RangeVar, args []paramRef, params *named.ParamSet, embeds rewrite.EmbedSet) ([]Parameter, error) {
+func (comp *Compiler) resolveCatalogRefs(qc *QueryCatalog, root ast.Node, rvs []*ast.RangeVar, args []paramRef, params *named.ParamSet, embeds rewrite.EmbedSet) ([]Parameter, error) {
 	c := comp.catalog
 
 	aliasMap := map[string]*ast.TableName{}
@@ -68,7 +68,18 @@ func (comp *Compiler) resolveCatalogRefs(qc *QueryCatalog, rvs []*ast.RangeVar, 
 			}
 			// If the table name doesn't exist, first check if it's a CTE
 			if _, qcerr := qc.GetTable(fqn); qcerr != nil {
-				return nil, err
+				// It may be a CTE of a WITH clause nested in the statement,
+				// visible only where this reference sits.
+				scope, serr := comp.scopeOfRangeVar(qc, root, rv)
+				if serr != nil {
+					return nil, serr
+				}
+				if scope == nil {
+					return nil, err
+				}
+				if _, qcerr := scope.GetTable(fqn); qcerr != nil {
+					return nil, err
+				}
 			}
 			continue
 		}
@@ -635,4 +646,17 @@ func (comp *Compiler) resolveCatalogRefs(qc *QueryCatalog, rvs []*ast.RangeVar, 
 		}
 	}
 	return a, nil
+}
+
+// scopeOfRangeVar returns the catalog in effect where rv sits in root, or nil
+// if rv isn't under root.
+func (comp *Compiler) scopeOfRangeVar(qc *QueryCatalog, root ast.Node, rv *ast.RangeVar) (*QueryCatalog, error) {
+	var found *QueryCatalog
+	err := comp.walkScopes(qc, root, func(qc *QueryCatalog, node ast.Node) error {
+		if node == ast.Node(rv) {
+			found = qc
+		}
+		return nil
+	})
+	return found, err
 }

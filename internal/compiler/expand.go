@@ -20,27 +20,27 @@ func (c *Compiler) expand(qc *QueryCatalog, raw *ast.RawStmt) ([]source.Edit, er
 	if len(stars.Items) == 0 {
 		return nil, nil
 	}
-	list := astutils.Search(raw, func(node ast.Node) bool {
+	// Each statement is expanded with the catalog in effect where it sits, so
+	// that a statement inside a nested WITH clause can see that clause's names.
+	var edits []source.Edit
+	err := c.walkScopes(qc, raw, func(qc *QueryCatalog, node ast.Node) error {
 		switch node.(type) {
 		case *ast.DeleteStmt:
 		case *ast.InsertStmt:
 		case *ast.SelectStmt:
 		case *ast.UpdateStmt:
 		default:
-			return false
+			return nil
 		}
-		return true
-	})
-	if len(list.Items) == 0 {
-		return nil, nil
-	}
-	var edits []source.Edit
-	for _, item := range list.Items {
-		edit, err := c.expandStmt(qc, raw, item)
+		edit, err := c.expandStmt(qc, raw, node)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		edits = append(edits, edit...)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return edits, nil
 }

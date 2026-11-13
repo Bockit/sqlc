@@ -52,6 +52,10 @@ func hasStarRef(cf *ast.ColumnRef) bool {
 // Return an error if column references are ambiguous
 // Return an error if column references don't exist
 func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, error) {
+	qc, err := c.scopeFor(qc, node)
+	if err != nil {
+		return nil, err
+	}
 	tables, err := c.sourceTables(qc, node)
 	if err != nil {
 		return nil, err

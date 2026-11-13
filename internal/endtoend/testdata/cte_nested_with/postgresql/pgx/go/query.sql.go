@@ -7,8 +7,6 @@ package querytest
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getAuthor = `-- name: GetAuthor :one
@@ -30,9 +28,9 @@ WITH person AS(
 select total from person
 `
 
-func (q *Queries) GetAuthor(ctx context.Context) (pgtype.Int8, error) {
+func (q *Queries) GetAuthor(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, getAuthor)
-	var total pgtype.Int8
+	var total int64
 	err := row.Scan(&total)
 	return total, err
 }
