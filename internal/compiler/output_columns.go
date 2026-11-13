@@ -448,6 +448,11 @@ func isTableRequired(n ast.Node, col *Column, prior int) int {
 		}
 	case *ast.JoinExpr:
 		helper := func(l, r int) int {
+			// A join on the nullable side of an outer join is nullable as a
+			// whole, whatever kind of join it is itself.
+			if prior == tableOptional {
+				l, r = tableOptional, tableOptional
+			}
 			if res := isTableRequired(n.Larg, col, l); res != tableNotFound {
 				return res
 			}
