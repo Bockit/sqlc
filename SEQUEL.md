@@ -30,7 +30,7 @@ Each fix is one commit, or two for the last, with its tests under `internal/endt
    took the column's `NOT NULL` and was reported as never null. It stays never null only when the
    subquery always returns a row: an aggregate with no `GROUP BY`, or a `SELECT` with no `FROM`.
    The first of its two commits is upstream pull request 4654 by Ken Britton, cherry-picked; the
-   second lets the aggregate sit inside an expression, as in `count(*)::int`.
+   second keeps an expression over `count`, as in `count(*)::int`, never null.
 
 A query none of these apply to produces the output v1.31.1 produces. One query that used to
 generate can now fail: a nested CTE that has the name of a table, and a body sqlc can't analyse.
