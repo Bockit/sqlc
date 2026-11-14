@@ -256,6 +256,9 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 			if firstColumn != nil {
 				firstColumn.NotNull = shouldNotBeNull
 				firstColumn.skipTableRequiredCheck = true
+				// COALESCE over a function call read through a subquery isn't
+				// that function call.
+				firstColumn.IsFuncCall = false
 				cols = append(cols, firstColumn)
 			} else {
 				cols = append(cols, &Column{Name: name, DataType: "any", NotNull: false})
@@ -297,6 +300,7 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 							IsArray:      c.IsArray,
 							ArrayDims:    c.ArrayDims,
 							Length:       c.Length,
+							IsFuncCall:   c.IsFuncCall,
 							from:         t.from,
 						})
 					}
@@ -733,6 +737,7 @@ func outputColumnRefs(res *ast.ResTarget, tables []*Table, node *ast.ColumnRef) 
 					Length:       c.Length,
 					EmbedTable:   c.EmbedTable,
 					OriginalName: c.Name,
+					IsFuncCall:   c.IsFuncCall,
 					from:         t.from,
 				})
 			}

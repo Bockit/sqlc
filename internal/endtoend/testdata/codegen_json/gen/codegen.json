@@ -65361,6 +65361,135 @@
       "comments": [],
       "filename": "query.sql",
       "insert_into_table": null
+    },
+    {
+      "text": "WITH counted AS (\n  SELECT count(*) AS authors, max(name) AS last_name FROM authors\n)\nSELECT authors, last_name FROM counted",
+      "name": "CountAuthorsThroughCTE",
+      "cmd": ":one",
+      "columns": [
+        {
+          "name": "authors",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": true,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "counted"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "bigint"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "authors",
+          "unsigned": false,
+          "array_dims": 0
+        },
+        {
+          "name": "last_name",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": true,
+          "scope": "",
+          "table": {
+            "catalog": "",
+            "schema": "",
+            "name": "counted"
+          },
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "anyarray"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "last_name",
+          "unsigned": false,
+          "array_dims": 0
+        }
+      ],
+      "params": [],
+      "comments": [],
+      "filename": "query.sql",
+      "insert_into_table": null
+    },
+    {
+      "text": "SELECT longest FROM (SELECT max(length(bio)) AS longest FROM authors) x",
+      "name": "LongestBioThroughSubquery",
+      "cmd": ":one",
+      "columns": [
+        {
+          "name": "longest",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": true,
+          "scope": "",
+          "table": null,
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "anyarray"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "longest",
+          "unsigned": false,
+          "array_dims": 0
+        }
+      ],
+      "params": [],
+      "comments": [],
+      "filename": "query.sql",
+      "insert_into_table": null
+    },
+    {
+      "text": "SELECT COALESCE(x.longest, 0) AS longest FROM (SELECT max(length(bio)) AS longest FROM authors) x",
+      "name": "LongestBioOrZero",
+      "cmd": ":one",
+      "columns": [
+        {
+          "name": "longest",
+          "not_null": true,
+          "is_array": false,
+          "comment": "",
+          "length": -1,
+          "is_named_param": false,
+          "is_func_call": false,
+          "scope": "",
+          "table": null,
+          "table_alias": "",
+          "type": {
+            "catalog": "",
+            "schema": "",
+            "name": "anyarray"
+          },
+          "is_sqlc_slice": false,
+          "embed_table": null,
+          "original_name": "longest",
+          "unsigned": false,
+          "array_dims": 0
+        }
+      ],
+      "params": [],
+      "comments": [],
+      "filename": "query.sql",
+      "insert_into_table": null
     }
   ],
   "sqlc_version": "v1.31.1",
