@@ -74,7 +74,7 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 
 		if n.GroupClause != nil {
 			for _, item := range n.GroupClause.Items {
-				if err := findColumnForNode(item, tables, targets); err != nil {
+				if err := findColumnForNode(item, tables, targets); err != nil && !c.outerHasColumn(qc, node, item, err) {
 					return nil, err
 				}
 			}
@@ -90,7 +90,7 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 					if !ok {
 						continue
 					}
-					if err := findColumnForNode(sb.Node, tables, targets); err != nil {
+					if err := findColumnForNode(sb.Node, tables, targets); err != nil && !c.outerHasColumn(qc, node, sb.Node, err) {
 						return nil, fmt.Errorf("%v: if you want to skip this validation, set 'strict_order_by' to false", err)
 					}
 				}
@@ -243,7 +243,11 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 				if ref, ok := arg.(*ast.ColumnRef); ok {
 					columns, err := outputColumnRefs(res, tables, ref)
 					if err != nil {
-						return nil, err
+						outer, ok := c.outerColumnRefs(qc, node, res, ref, err)
+						if !ok {
+							return nil, err
+						}
+						columns = outer
 					}
 					for _, c := range columns {
 						if firstColumn == nil {
@@ -310,7 +314,13 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 
 			columns, err := outputColumnRefs(res, tables, n)
 			if err != nil {
-				return nil, err
+				// A column this statement's FROM clause doesn't have may
+				// belong to the query around it.
+				outer, ok := c.outerColumnRefs(qc, node, res, n, err)
+				if !ok {
+					return nil, err
+				}
+				columns = outer
 			}
 			cols = append(cols, columns...)
 
@@ -453,6 +463,14 @@ func isTableRequired(n ast.Node, col *Column, prior int) int {
 		aliasMatch := true
 		if n.Alias != nil && col.TableAlias != "" {
 			aliasMatch = *n.Alias.Aliasname == col.TableAlias
+		}
+		if col.byName {
+			name := n.Relname
+			if n.Alias != nil {
+				name = n.Alias.Aliasname
+			}
+			aliasMatch = name != nil && *name == col.TableAlias
+			tableMatch = true
 		}
 		if aliasMatch && tableMatch {
 			return prior

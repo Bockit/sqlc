@@ -1,0 +1,13 @@
+# package querytest
+query.sql:3:35: column "id" does not exist
+query.sql:6:22: column "value" does not exist
+query.sql:10:61: column "id" does not exist
+query.sql:14:30: column "id" does not exist
+query.sql:18:22: column "name" does not exist
+query.sql:22:22: column "name" does not exist
+query.sql:26:91: column reference "id" is ambiguous
+query.sql:30:33: column "name" does not exist
+query.sql:34:30: column "plate" does not exist
+query.sql:38:30: column "name" does not exist
+query.sql:42:22: column "id" does not exist
+query.sql:46:35: column "name" does not exist

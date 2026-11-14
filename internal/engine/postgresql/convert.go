@@ -1848,6 +1848,7 @@ func convertJoinExpr(n *pg.JoinExpr) *ast.JoinExpr {
 		UsingClause: convertSlice(n.UsingClause),
 		Quals:       convertNode(n.Quals),
 		Alias:       convertAlias(n.Alias),
+		UsingAlias:  convertAlias(n.JoinUsingAlias),
 		Rtindex:     int(n.Rtindex),
 	}
 }

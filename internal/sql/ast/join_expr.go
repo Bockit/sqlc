@@ -10,7 +10,10 @@ type JoinExpr struct {
 	UsingClause *List
 	Quals       Node
 	Alias       *Alias
-	Rtindex     int
+	// UsingAlias is the alias of the join's USING clause, as in
+	// a JOIN b USING (id) AS j.
+	UsingAlias *Alias
+	Rtindex    int
 }
 
 func (n *JoinExpr) Pos() int {
