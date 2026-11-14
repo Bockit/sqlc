@@ -158,7 +158,9 @@ func (c *Compiler) outputColumns(qc *QueryCatalog, node ast.Node) ([]*Column, er
 			switch op := astutils.Join(n.Name, ""); {
 			case lang.IsComparisonOperator(op):
 				// TODO: Generate a name for these operations
-				cols = append(cols, &Column{Name: name, DataType: "bool", NotNull: true})
+				// NULLIF(a, b) parses as a comparison, and is NULL when the two
+				// are equal.
+				cols = append(cols, &Column{Name: name, DataType: "bool", NotNull: n.Kind != ast.A_Expr_Kind_NULLIF})
 			case lang.IsMathematicalOperator(op):
 				cols = append(cols, &Column{Name: name, DataType: "int", NotNull: true})
 			default:

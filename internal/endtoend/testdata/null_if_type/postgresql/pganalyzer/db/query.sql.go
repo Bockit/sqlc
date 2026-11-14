@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const getRestrictedId = `-- name: GetRestrictedId :one
@@ -16,9 +17,9 @@ FROM
   author
 `
 
-func (q *Queries) GetRestrictedId(ctx context.Context, id int64) (int64, error) {
+func (q *Queries) GetRestrictedId(ctx context.Context, id int64) (sql.NullInt64, error) {
 	row := q.db.QueryRowContext(ctx, getRestrictedId, id)
-	var restricted_id int64
+	var restricted_id sql.NullInt64
 	err := row.Scan(&restricted_id)
 	return restricted_id, err
 }
