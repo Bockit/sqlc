@@ -1,6 +1,6 @@
 # The `sequel` branch
 
-This branch is sqlc v1.31.1 plus six fixes to its query analysis. It exists so
+This branch is sqlc v1.31.1 plus fixes to its query analysis. It exists so
 that [sequel](https://github.com/Bockit/sequel) can pin a sqlc binary with these fixes. It is not
 an official sqlc release, and sqlc's maintainers are not responsible for it.
 
@@ -9,7 +9,7 @@ Everything else is sqlc as released. For sqlc itself, see [README.md](README.md)
 
 ## What it changes
 
-Each fix is one commit, or two for the last, with its tests under `internal/endtoend/testdata`.
+Each fix has its own commits, with its tests under `internal/endtoend/testdata`.
 
 1. **A `WITH` nested in a statement is analysed.** A `WITH` inside a `FROM` or `LATERAL`
    subquery, another CTE, or a subquery of the select list, `WHERE` or a join condition used to
@@ -31,6 +31,19 @@ Each fix is one commit, or two for the last, with its tests under `internal/endt
    subquery always returns a row: an aggregate with no `GROUP BY`, or a `SELECT` with no `FROM`.
    The first of its two commits is upstream pull request 4654 by Ken Britton, cherry-picked; the
    second keeps an expression over `count`, as in `count(*)::int`, never null.
+7. **A chained cast after a named parameter is rewritten.** `@name::text::text` came out as
+   `$1xt`, and `@name::int::bigint` was not rewritten at all.
+8. **`NULLIF` can be NULL.** It was reported as never null.
+9. **A column read through a subquery or CTE is still a function call.** The `is_func_call` flag
+   was dropped on the way out, so a plugin trusted the `NOT NULL` that sqlc gives a function
+   call without knowing: `max(x)` over no rows is NULL.
+10. **A nested statement can read the query around it.** A subquery in an expression whose
+    select list, or whose `WITH`, names a column of the statement it is nested in used to fail
+    with `column "x" does not exist`. A qualified reference, `t.x`, now goes to the nearest
+    statement around it with a `FROM` item named `t`, as PostgreSQL decides it. An unqualified
+    name still fails, and so does anything sqlc can't place with certainty: a reference from
+    inside a `LATERAL` subquery, or to a function, to `VALUES`, or to an item with a list of
+    column aliases. PostgreSQL only.
 
 A query none of these apply to produces the output v1.31.1 produces. One query that used to
 generate can now fail: a nested CTE that has the name of a table, and a body sqlc can't analyse.
@@ -44,7 +57,7 @@ reproducible: the same commit gives the same bytes on any machine, for any targe
 ```sh
 CGO_ENABLED=0 GOFLAGS=-buildvcs=false GOOS=linux GOARCH=amd64 \
   go build -trimpath \
-  -ldflags "-s -w -X github.com/sqlc-dev/sqlc/internal/cmd.version=v1.31.1-sequel.1" \
+  -ldflags "-s -w -X github.com/sqlc-dev/sqlc/internal/cmd.version=v1.31.1-sequel.2" \
   -o sqlc ./cmd/sqlc
 ```
 
