@@ -128,11 +128,21 @@ func NamedParameters(engine config.Engine, raw *ast.RawStmt, numbs map[int]bool,
 		case isNamedParamSignCast(node):
 			expr := node.(*ast.A_Expr)
 			cast := expr.Rexpr.(*ast.TypeCast)
-			paramName, _ := flatten(cast.Arg)
+			// In @foo::a::b the parameter sits under every cast, not only
+			// the outermost one.
+			inner := cast
+			for {
+				next, ok := inner.Arg.(*ast.TypeCast)
+				if !ok {
+					break
+				}
+				inner = next
+			}
+			paramName, _ := flatten(inner.Arg)
 			param := named.NewParam(paramName)
 
 			argn := allParams.Add(param)
-			cast.Arg = &ast.ParamRef{
+			inner.Arg = &ast.ParamRef{
 				Number:   argn,
 				Location: expr.Location,
 			}
